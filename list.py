@@ -6,7 +6,6 @@ places: list=[
     {'name': 'Muzeum Sztuki Nowoczesnej w Warszawie', 'author': 'Nikita Kadan', 'title': 'Drawing from the Pogrom series','date': '2016–2017', 'medium': 'węgiel na papierze'},
     {'name': 'Muzeum Sztuki w Łodzi', 'author': 'Janusz Maria Brzeski', 'title': 'Narodziny robota: Sielanka XX wieku','date': ' 1933', 'medium': ' fotokolaż, papier'},
     {'name': 'Muzeum Sztuki w Łodzi', 'author': 'Mieczysław Szczuka', 'title': 'Dymy nad miastem. Projekt okładki do tomiku poezji Władysława Broniewskiego','date': ' ok. 1926', 'medium': ' fotomontaż, papier, tusz'},
-
 ]
 
 for place in places:
