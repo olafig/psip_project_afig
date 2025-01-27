@@ -1,3 +1,4 @@
+
 places: list=[
     {'name': 'Muzeum Sztuki Nowoczesnej w Warszawie', 'author': 'Tala Mandi', 'title': 'Becoming Brilliant II', 'date': '2013', 'medium': 'farba olejna na płótnie'},
     {'name': 'Muzeum Sztuki Nowoczesnej w Warszawie', 'author': 'Gustav Metzger', 'title': 'Eichmann and the Angel (Warsaw version)','date': '2005/2011', 'medium': 'rekonstrukcja kabiny Eichmanna (płyta wiórowa malowana, aluminium, szkło, tworzywo sztuczne), transmiter taśmowy, gazety, wydruk na papierze, litery winylowe, książki, czasopisma'},
