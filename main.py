@@ -1,225 +1,517 @@
-
+# import bibliotek
 from tkinter import *
-import requests
 import tkintermapview
+import requests
 from bs4 import BeautifulSoup
 
-def main():
-    class Exhibition:
-        def __init__(self, name, type, author, title, date, medium, location):
-            self.name = name
-            self.type = type
-            self.author = author
-            self.title = title
-            self.date = date
-            self.medium = medium
-            self.location = location
-            self.coordinates = self.get_coordinates()
-            self.marker = map_widget.set_marker(
-                self.coordinates[0],
-                self.coordinates[1],
-                text=f'{self.name} - {self.author}',
-            )
+# tworzenie list
+dane_galerie = []
+dane_wystawy = []
+dane_dziela = []
+dane_pracownicy = []
+markers = []
 
-        def get_coordinates(self):
-            url: str = f'https://pl.wikipedia.org/wiki/{self.location}'
-            response = requests.get(url)
-            response_html = BeautifulSoup(response.text, 'html.parser')
-            return [
-                float(response_html.select('.latitude')[1].text.replace(',', '.')),
-                float(response_html.select('.longitude')[1].text.replace(',', '.'))
-            ]
+#funkcja startowa
+def start_app():
+    def check_login(): # funkcja do logowania
+        username = entry_username.get()
+        password = entry_password.get()
+        if (username == "admin" and password == "admin") or (username == "uzytkownik" and password == "uzytkownik"):
+            login_window.destroy()
+            manage_mode(username == "admin")
 
+#utworzenie okna logowania
+    login_window = Tk()
+    login_window.geometry("300x200")
+    login_window.title("Logowanie")
 
-    exhibitions = []
+    login_window.configure(bg = "#D9B0DE")
 
-    def validate_inputs():
-        inputs = [entry_name, entry_type, entry_author, entry_title, entry_date, entry_medium, entry_location]
-        for entry in inputs:
-            if not entry.get().strip():
-                return False
-        return True
+    Label(login_window, text="Nazwa użytkownika:",bg="#D9B0DE").pack(pady=5)
+    entry_username = Entry(login_window)
+    entry_username.pack(pady=5)
 
-    def show_exhibitions():
-        listbox_lista_wystaw.delete(0, END)
-        for idx, exhibition in enumerate(exhibitions):
-            listbox_lista_wystaw.insert(idx, f'{exhibition.name} | {exhibition.type} | {exhibition.author}')
+    Label(login_window, text="Hasło:", bg="#D9B0DE").pack(pady=5)
+    entry_password = Entry(login_window, show="*")
+    entry_password.pack(pady=5)
 
-    def add_exhibition():
-        if not validate_inputs():
-            print("Wszystkie pola muszą być wypełnione!")
-            return
+    Button(login_window, text="Zaloguj", bg="#D9B0DE", command=check_login).pack(pady=10)
+    login_window.mainloop()
 
-        name = entry_name.get()
-        type = entry_type.get()
-        author = entry_author.get()
-        title = entry_title.get()
-        date = entry_date.get()
-        medium = entry_medium.get()
-        location = entry_location.get()
-
-        new_exhibition = Exhibition(name, type, author, title, date, medium, location)
-        exhibitions.append(new_exhibition)
-        show_exhibitions()
-
-        clear_inputs()
-
-    def clear_inputs():
-        entries = [entry_name, entry_type, entry_author, entry_title, entry_date, entry_medium, entry_location]
-        for entry in entries:
-            entry.delete(0, END)
-
-    def delete_exhibition():
-        selected_index = listbox_lista_wystaw.curselection()
-        if selected_index:
-            idx = selected_index[0]
-            exhibitions[idx].marker.delete()
-            exhibitions.pop(idx)
-            show_exhibitions()
-
-    def edit_exhibition():
-        selected_index = listbox_lista_wystaw.curselection()
-        if selected_index:
-            idx = selected_index[0]
-            exhibition = exhibitions[idx]
-
-            entry_name.insert(0, exhibition.name)
-            entry_type.insert(0, exhibition.type)
-            entry_author.insert(0, exhibition.author)
-            entry_title.insert(0, exhibition.title)
-            entry_date.insert(0, exhibition.date)
-            entry_medium.insert(0, exhibition.medium)
-            entry_location.insert(0, exhibition.location)
-
-            button_add.config(text='Zapisz zmiany', command=lambda: update_exhibition(idx))
-
-    def update_exhibition(idx):
-        if not validate_inputs():
-            print("Wszystkie pola muszą być wypełnione!")
-            return
-
-        exhibition = exhibitions[idx]
-        exhibition.name = entry_name.get()
-        exhibition.type = entry_type.get()
-        exhibition.author = entry_author.get()
-        exhibition.title = entry_title.get()
-        exhibition.date = entry_date.get()
-        exhibition.medium = entry_medium.get()
-        exhibition.location = entry_location.get()
-        exhibition.coordinates = exhibition.get_coordinates()
-
-        exhibition.marker.delete()
-        exhibition.marker = map_widget.set_marker(exhibition.coordinates[0], exhibition.coordinates[1])
-
-        clear_inputs()
-        button_add.config(text='Dodaj obiekt', command=add_exhibition)
-        show_exhibitions()
-
-    def show_exhibition_details():
-        selected_index = listbox_lista_wystaw.curselection()
-        if selected_index:
-            idx = selected_index[0]
-            exhibition = exhibitions[idx]
-            label_szczegoly_name_wartosc.config(text=exhibition.name)
-            label_szczegoly_type_wartosc.config(text=exhibition.type)
-            label_szczegoly_author_wartosc.config(text=exhibition.author)
-            label_szczegoly_title_wartosc.config(text=exhibition.title)
-            label_szczegoly_date_wartosc.config(text=exhibition.date)
-            label_szczegoly_medium_wartosc.config(text=exhibition.medium)
-            label_szczegoly_location_wartosc.config(text=exhibition.location)
-            map_widget.set_position(exhibition.coordinates[0], exhibition.coordinates[1])
-            map_widget.set_zoom(12)
-
+#funkcja do zarządzania
+def manage_mode(is_admin):
     root = Tk()
-    root.geometry("1000x900")
-    root.title("EXHIBITION_API")
+    root.geometry("1300x1000")
+    root.title("EXHIBITION_MANAGE_API")
 
-    ramka_mapa = Frame(root, padx=100, pady=20)
-    ramka_lista_wystaw = Frame(root, bg="#9E6189", padx=10, pady=10)
-    ramka_info = Frame(root, bg="#9E6189", padx=10, pady=10)
-    ramka_szczegoly_obiektu = Frame(root, bg="#9E6189", padx=10, pady=10)
+    root.configure(bg="#D9B0DE")
 
+#funkcja do usuwania znaczników na mapie, wyszukiwanie po indeksie i
+    def find_marker_index(object_name):
+        for i, marker_data in enumerate(markers):
+            if marker_data[0] == object_name:
+                return i
+        return -1
+
+    def delete_marker_by_name(object_name):
+        idx = find_marker_index(object_name)
+        if idx != -1: #jeśli znajdzie marker o liczbie większej niż 0 lub 0 to zwraca marker jeżeli nie znajdzie to zwraca -1
+            marker_obj = markers[idx][1]
+            marker_obj.delete()
+            del markers[idx] #usuniecie z listy
+
+    ramka_mapa = Frame(root, padx=300, pady=30)
     ramka_mapa.grid(row=0, column=0, columnspan=2, sticky="nsew")
-    ramka_lista_wystaw.grid(row=1, column=0, sticky="nsew")
-    ramka_info.grid(row=1, column=1, sticky="nsew")
-    ramka_szczegoly_obiektu.grid(row=2, column=0, columnspan=2, sticky="nsew")
+
+    ramka_mapa.configure(bg = "#D9B0DE")
 
     map_widget = tkintermapview.TkinterMapView(ramka_mapa, width=800, height=400)
     map_widget.set_position(52.0, 21.0)
     map_widget.set_zoom(6)
     map_widget.pack(fill=BOTH, expand=True)
 
-    Label(ramka_lista_wystaw, text="Lista galerii i wystaw:", bg="#9E6189", fg="black").grid(row=0, column=0, sticky=W, padx=80)
-    listbox_lista_wystaw = Listbox(ramka_lista_wystaw, width=50)
-    listbox_lista_wystaw.grid(row=1, column=0, columnspan=2)
-    Button(ramka_lista_wystaw, text="Pokaż szczegóły", command=show_exhibition_details).grid(row=2, column=0, pady=5, padx=80)
-    Button(ramka_lista_wystaw, text="Usuń obiekt", command=delete_exhibition).grid(row=2, column=1, pady=5, padx=80)
-    Button(ramka_lista_wystaw, text="Edytuj obiekt", command=edit_exhibition).grid(row=3, column=1, pady=5, padx=80)
+    def get_coordinates(location):
+        url: str = f'https://pl.wikipedia.org/wiki/{location}'
+        response = requests.get(url)
+        response_html = BeautifulSoup(response.text, 'html.parser')
+        return [
+            float(response_html.select('.latitude')[1].text.replace(',', '.')),
+            float(response_html.select('.longitude')[1].text.replace(',', '.'))
+        ]
 
-    Label(ramka_info, text="Dodaj obiekt:", bg="#9E6189", fg="black").grid(row=0, column=0, columnspan=2, sticky=W)
+# funkcja do okna otwierania galerii
+    def open_galerie_window():
+        window = Toplevel(root) #okno toplevel podrzędne względem root
+        window.title("Galerie sztuki")
 
-    Label(ramka_info, text="Nazwa:", bg="#9E6189").grid(row=1, column=0, sticky=W)
-    entry_name = Entry(ramka_info)
-    entry_name.grid(row=1, column=1)
+        window.configure(bg="#D9B0DE")
 
-    Label(ramka_info, text="Typ:", bg="#9E6189").grid(row=2, column=0, sticky=W)
-    entry_type = Entry(ramka_info)
-    entry_type.grid(row=2, column=1)
+        def refresh_listbox():
+            listbox_details.delete(0, END)
+            for i, galeria in enumerate(dane_galerie):
+                listbox_details.insert(
+                    END,
+                    f"{i+1}. [Nazwa: {galeria[0]}, Lokalizacja: {galeria[1]}]"
+                )
 
-    Label(ramka_info, text="Autor:", bg="#9E6189").grid(row=3, column=0, sticky=W)
-    entry_author = Entry(ramka_info)
-    entry_author.grid(row=3, column=1)
+        def show_details():
+            refresh_listbox()
 
-    Label(ramka_info, text="Tytuł:", bg="#9E6189").grid(row=4, column=0, sticky=W)
-    entry_title = Entry(ramka_info)
-    entry_title.grid(row=4, column=1)
+        def wprowadz_dane():
+            nazwa = entry_nazwa.get().strip()
+            lokalizacja = entry_lokalizacja.get().strip()
+            if nazwa and lokalizacja:
+                dane_galerie.append([nazwa, lokalizacja])
+                entry_nazwa.delete(0, END)
+                entry_lokalizacja.delete(0, END)
+                refresh_listbox()
 
-    Label(ramka_info, text="Data powstania:", bg="#9E6189").grid(row=5, column=0, sticky=W)
-    entry_date = Entry(ramka_info)
-    entry_date.grid(row=5, column=1)
 
-    Label(ramka_info, text="Medium:", bg="#9E6189").grid(row=6, column=0, sticky=W)
-    entry_medium = Entry(ramka_info)
-    entry_medium.grid(row=6, column=1)
+        def edytuj_dane():
+            selection = listbox_details.curselection() #pobranie indeksu zaznaczzonej rzeczy
+            if not selection:
+                return
+            index = selection[0] #pobieranie indeksu
+            current = dane_galerie[index]
+            old_name = current[0]
+            new_nazwa = entry_nazwa.get().strip()
+            new_lokalizacja = entry_lokalizacja.get().strip()
+            if new_nazwa or new_lokalizacja:
+                if new_nazwa:
+                    delete_marker_by_name(old_name)
+                    current[0] = new_nazwa
+                if new_lokalizacja:
+                    current[1] = new_lokalizacja
+                entry_nazwa.delete(0, END)
+                entry_lokalizacja.delete(0, END)
+                refresh_listbox()
 
-    Label(ramka_info, text="Lokalizacja:", bg="#9E6189").grid(row=7, column=0, sticky=W)
-    entry_location = Entry(ramka_info)
-    entry_location.grid(row=7, column=1)
+        def usun_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            galeria_do_usuniecia = dane_galerie[index][0]
+            delete_marker_by_name(galeria_do_usuniecia)
+            dane_galerie.pop(index)
+            refresh_listbox()
 
-    button_add = Button(ramka_info, text="Dodaj obiekt", command=add_exhibition)
-    button_add.grid(row=8, column=0, columnspan=2, pady=5)
+        frame_details = Frame(window,bg="#D9B0DE", padx=10, pady=10)
+        frame_details.pack()
+        Button(frame_details, text="Pokaż szczegóły", bg = "#B194BD", command=show_details).pack()
+        listbox_details = Listbox(frame_details, width=80)
+        listbox_details.pack()
 
-    Label(ramka_szczegoly_obiektu, text="Szczegóły obiektu:", bg="#9E6189", fg="black").grid(row=0, column=0, sticky=W, padx=80)
+        frame_data = Frame(window, padx=10, pady=10)
+        frame_data.pack()
+        Label(frame_data, text="Dane:").pack()
+        Label(frame_data, text="Nazwa:").pack()
+        entry_nazwa = Entry(frame_data)
+        entry_nazwa.pack()
+        Label(frame_data, text="Lokalizacja:").pack()
+        entry_lokalizacja = Entry(frame_data)
+        entry_lokalizacja.pack()
 
-    Label(ramka_szczegoly_obiektu, text="Nazwa:", bg="#9E6189").grid(row=1, column=0, sticky=W)
-    label_szczegoly_name_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_name_wartosc.grid(row=1, column=1)
+        button_frame = Frame(window, padx=10, pady=10)
+        button_frame.pack()
+        Button(button_frame, text="Wprowadź", bg = "#64C285", command=wprowadz_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Edytuj",bg = "#B8AE45", command=edytuj_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Usuń",bg = "#FF4043", command=usun_dane).pack(side=LEFT, padx=5)
 
-    Label(ramka_szczegoly_obiektu, text="Typ:", bg="#9E6189").grid(row=2, column=0, sticky=W)
-    label_szczegoly_type_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_type_wartosc.grid(row=2, column=1)
+    def open_wystawy_window():
+        window = Toplevel(root)
+        window.title("Wystawy")
 
-    Label(ramka_szczegoly_obiektu, text="Autor:", bg="#9E6189").grid(row=3, column=0, sticky=W)
-    label_szczegoly_author_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_author_wartosc.grid(row=3, column=1)
+        window.configure(bg="#D9B0DE")
 
-    Label(ramka_szczegoly_obiektu, text="Tytuł:", bg="#9E6189").grid(row=4, column=0, sticky=W)
-    label_szczegoly_title_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_title_wartosc.grid(row=4, column=1)
+        def refresh_listbox():
+            listbox_details.delete(0, END)
+            for i, wystawa in enumerate(dane_wystawy):
+                listbox_details.insert(
+                    END,
+                    f"{i+1}. [Nazwa: {wystawa[0]}, Lokalizacja: {wystawa[1]}]"
+                )
 
-    Label(ramka_szczegoly_obiektu, text="Data:", bg="#9E6189").grid(row=5, column=0, sticky=W)
-    label_szczegoly_date_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_date_wartosc.grid(row=5, column=1)
+        def show_details():
+            refresh_listbox()
 
-    Label(ramka_szczegoly_obiektu, text="Medium:", bg="#9E6189").grid(row=6, column=0, sticky=W)
-    label_szczegoly_medium_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_medium_wartosc.grid(row=6, column=1)
+        def wprowadz_dane():
+            nazwa = entry_nazwa.get().strip()
+            lokalizacja = entry_lokalizacja.get().strip()
+            if nazwa and lokalizacja:
+                dane_wystawy.append([nazwa, lokalizacja])
+                entry_nazwa.delete(0, END)
+                entry_lokalizacja.delete(0, END)
+                refresh_listbox()
 
-    Label(ramka_szczegoly_obiektu, text="Lokalizacja:", bg="#9E6189").grid(row=7, column=0, sticky=W)
-    label_szczegoly_location_wartosc = Label(ramka_szczegoly_obiektu, text="...")
-    label_szczegoly_location_wartosc.grid(row=7, column=1)
+        def edytuj_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            current = dane_wystawy[index]
+            old_name = current[0]
+            new_nazwa = entry_nazwa.get().strip()
+            new_lokalizacja = entry_lokalizacja.get().strip()
+            if new_nazwa or new_lokalizacja:
+                if new_nazwa:
+                    delete_marker_by_name(old_name)
+                    current[0] = new_nazwa
+                if new_lokalizacja:
+                    current[1] = new_lokalizacja
+                entry_nazwa.delete(0, END)
+                entry_lokalizacja.delete(0, END)
+                refresh_listbox()
+
+        def usun_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            wystawa_do_usuniecia = dane_wystawy[index][0]
+            delete_marker_by_name(wystawa_do_usuniecia)
+            dane_wystawy.pop(index)
+            refresh_listbox()
+
+        frame_details = Frame(window, bg="#D9B0DE", padx=10, pady=10)
+        frame_details.pack()
+        Button(frame_details, text="Pokaż szczegóły", bg = "#B194BD", command=show_details).pack()
+        listbox_details = Listbox(frame_details, width=80)
+        listbox_details.pack()
+
+        frame_data = Frame(window, padx=10, pady=10)
+        frame_data.pack()
+        Label(frame_data, text="Dane:").pack()
+        Label(frame_data, text="Nazwa:").pack()
+        entry_nazwa = Entry(frame_data)
+        entry_nazwa.pack()
+        Label(frame_data, text="Lokalizacja:").pack()
+        entry_lokalizacja = Entry(frame_data)
+        entry_lokalizacja.pack()
+
+        button_frame = Frame(window, padx=10, pady=10)
+        button_frame.pack()
+        Button(button_frame, text="Wprowadź",bg = "#64C285", command=wprowadz_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Edytuj",bg = "#B8AE45", command=edytuj_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Usuń",bg = "#FF4043", command=usun_dane).pack(side=LEFT, padx=5)
+
+    def open_dziela_window():
+        window = Toplevel(root)
+        window.title("Dzieła")
+
+        window.configure(bg="#D9B0DE")
+
+        def refresh_listbox():
+            listbox_details.delete(0, END)
+            for i, dzielo_data in enumerate(dane_dziela):
+                listbox_details.insert(
+                    END,
+                    f"{i+1}. [Tytuł: {dzielo_data[0]}, Autor: {dzielo_data[1]}, Miejsce: {dzielo_data[2]}]"
+                )
+
+        def show_details():
+            refresh_listbox()
+
+        def wprowadz_dane():
+            tytul = entry_tytul.get().strip()
+            autor = entry_autor.get().strip()
+            powiazanie = entry_powiazanie.get().strip()
+            if tytul and autor and powiazanie:
+                dane_dziela.append([tytul, autor, powiazanie])
+                entry_tytul.delete(0, END)
+                entry_autor.delete(0, END)
+                entry_powiazanie.delete(0, END)
+                refresh_listbox()
+
+        def edytuj_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            current = dane_dziela[index]
+            new_tytul = entry_tytul.get().strip()
+            new_autor = entry_autor.get().strip()
+            new_powiazanie = entry_powiazanie.get().strip()
+            if new_tytul or new_autor or new_powiazanie:
+                if new_tytul:
+                    current[0] = new_tytul
+                if new_autor:
+                    current[1] = new_autor
+                if new_powiazanie:
+                    current[2] = new_powiazanie
+                entry_tytul.delete(0, END)
+                entry_autor.delete(0, END)
+                entry_powiazanie.delete(0, END)
+                refresh_listbox()
+
+        def usun_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            dane_dziela.pop(index)
+            refresh_listbox()
+
+        frame_details = Frame(window,bg="#D9B0DE",  padx=10, pady=10)
+        frame_details.pack()
+        Button(frame_details, text="Pokaż szczegóły", bg = "#B194BD", command=show_details).pack()
+        listbox_details = Listbox(frame_details, width=80)
+        listbox_details.pack()
+
+        frame_data = Frame(window, padx=10, pady=10)
+        frame_data.pack()
+        Label(frame_data, text="Dane:").pack()
+        Label(frame_data, text="Tytuł dzieła:").pack()
+        entry_tytul = Entry(frame_data)
+        entry_tytul.pack()
+        Label(frame_data, text="Autor dzieła:").pack()
+        entry_autor = Entry(frame_data)
+        entry_autor.pack()
+        Label(frame_data, text="Galeria sztuki lub Wystawa:").pack()
+        entry_powiazanie = Entry(frame_data)
+        entry_powiazanie.pack()
+
+        button_frame = Frame(window, padx=10, pady=10)
+        button_frame.pack()
+        Button(button_frame, text="Wprowadź",bg = "#64C285", command=wprowadz_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Edytuj",bg = "#B8AE45", command=edytuj_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Usuń",bg = "#FF4043", command=usun_dane).pack(side=LEFT, padx=5)
+
+    def open_pracownicy_window():
+        window = Toplevel(root)
+        window.title("Pracownicy")
+
+        window.configure(bg="#D9B0DE")
+
+        def refresh_listbox():
+            listbox_details.delete(0, END)
+            for i, pracownik in enumerate(dane_pracownicy):
+                listbox_details.insert(
+                    END,
+                    f"{i+1}. [Imię: {pracownik[0]}, Nazwisko: {pracownik[1]}, Miejsce: {pracownik[2]}]"
+                )
+
+        def show_details():
+            refresh_listbox()
+
+        def wprowadz_dane():
+            imie = entry_imie.get().strip()
+            nazwisko = entry_nazwisko.get().strip()
+            powiazanie = entry_powiazanie.get().strip()
+            if imie and nazwisko and powiazanie:
+                dane_pracownicy.append([imie, nazwisko, powiazanie])
+                entry_imie.delete(0, END)
+                entry_nazwisko.delete(0, END)
+                entry_powiazanie.delete(0, END)
+                refresh_listbox()
+
+        def edytuj_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            current = dane_pracownicy[index]
+            new_imie = entry_imie.get().strip()
+            new_nazwisko = entry_nazwisko.get().strip()
+            new_powiazanie = entry_powiazanie.get().strip()
+            if new_imie or new_nazwisko or new_powiazanie:
+                if new_imie:
+                    current[0] = new_imie
+                if new_nazwisko:
+                    current[1] = new_nazwisko
+                if new_powiazanie:
+                    current[2] = new_powiazanie
+                entry_imie.delete(0, END)
+                entry_nazwisko.delete(0, END)
+                entry_powiazanie.delete(0, END)
+                refresh_listbox()
+
+        def usun_dane():
+            selection = listbox_details.curselection()
+            if not selection:
+                return
+            index = selection[0]
+            dane_pracownicy.pop(index)
+            refresh_listbox()
+
+        frame_details = Frame(window,bg="#D9B0DE",  padx=10, pady=10)
+        frame_details.pack()
+        Button(frame_details, text="Pokaż szczegóły", bg = "#B194BD", command=show_details).pack()
+        listbox_details = Listbox(frame_details, width=80)
+        listbox_details.pack()
+
+        frame_data = Frame(window, padx=10, pady=10)
+        frame_data.pack()
+        Label(frame_data, text="Dane:").pack()
+        Label(frame_data, text="Imię:").pack()
+        entry_imie = Entry(frame_data)
+        entry_imie.pack()
+        Label(frame_data, text="Nazwisko:").pack()
+        entry_nazwisko = Entry(frame_data)
+        entry_nazwisko.pack()
+        Label(frame_data, text="Galeria sztuki lub Wystawa:").pack()
+        entry_powiazanie = Entry(frame_data)
+        entry_powiazanie.pack()
+
+        button_frame = Frame(window, padx=10, pady=10)
+        button_frame.pack()
+        Button(button_frame, text="Wprowadź",bg = "#64C285", command=wprowadz_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Edytuj", bg = "#B8AE45",command=edytuj_dane).pack(side=LEFT, padx=5)
+        Button(button_frame, text="Usuń",bg = "#FF4043", command=usun_dane).pack(side=LEFT, padx=5)
+
+    ramka_przyciski = Frame(root, padx=10, pady=10)
+    ramka_przyciski.grid(row=1, column=0, sticky="nsew")
+
+    ramka_wyswietlanie = Frame(root, bg="#EFEFEF", padx=10, pady=10)
+    ramka_wyswietlanie.grid(row=1, column=1, sticky="nsew")
+
+    Label(ramka_wyswietlanie, text="Zebrane dane:").pack()
+    dane_text = Text(ramka_wyswietlanie, height=15, width=60)
+    dane_text.pack()
+
+    Label(ramka_wyswietlanie, text="Wyszukaj nazwę galerii lub wystawy:").pack(pady=(10, 0))
+    search_entry = Entry(ramka_wyswietlanie, width=30)
+    search_entry.pack(pady=5)
+
+    def search_data():
+        dane_text.delete("0", END)
+        query = search_entry.get()
+        if not query:
+            return
+        znaleziono = False
+        for galeria in dane_galerie:
+            if galeria[0] == query:
+                dane_text.insert(END, f"Galeria Sztuki: {galeria[0]} ({galeria[1]})")
+                coords = get_coordinates(galeria[1])
+                if coords:
+                    map_widget.set_position(coords[0], coords[1])
+                    map_widget.set_zoom(12)
+                    delete_marker_by_name(galeria[0])
+                    marker = map_widget.set_marker(coords[0], coords[1], text=galeria[0])
+                    markers.append([galeria[0], marker])
+                for dzielo in dane_dziela:
+                    if dzielo[2] == galeria[0]:
+                        dane_text.insert(END, f" - Dzieło: {dzielo[0]} (autor: {dzielo[1]})")
+                for pracownik in dane_pracownicy:
+                    if pracownik[2] == galeria[0]:
+                        dane_text.insert(END, f" - Pracownik: {pracownik[0]} {pracownik[1]}")
+                znaleziono = True
+        for wystawa in dane_wystawy:
+            if wystawa[0] == query:
+                dane_text.insert(END, f"Wystawa artystyczna: {wystawa[0]} ({wystawa[1]})")
+                coords = get_coordinates(wystawa[1])
+                if coords:
+                    map_widget.set_position(coords[0], coords[1])
+                    map_widget.set_zoom(12)
+                    delete_marker_by_name(wystawa[0])
+                    marker = map_widget.set_marker(coords[0], coords[1], text=wystawa[0])
+                    markers.append([wystawa[0], marker])
+                for dzielo in dane_dziela:
+                    if dzielo[2] == wystawa[0]:
+                        dane_text.insert(END, f" - Dzieło: {dzielo[0]} (autor: {dzielo[1]})")
+                for pracownik in dane_pracownicy:
+                    if pracownik[2] == wystawa[0]:
+                        dane_text.insert(END, f" - Pracownik: {pracownik[0]} {pracownik[1]}")
+                znaleziono = True
+        if not znaleziono:
+            dane_text.insert(END, "Nie znaleziono Galerii Sztuki ani Wystawy.")
+
+    def search_data():
+        dane_text.delete(1.0, END)  #czyszczenie pola przed wpisaniem nowego
+        query = search_entry.get().strip() #zmienna query
+        if not query:
+            return
+        znaleziono = False # zmienna znaleziono
+        for galeria in dane_galerie:
+            if galeria[0].strip().lower() == query.lower():
+                dane_text.insert(END, f"Galeria Sztuki: {galeria[0]} ({galeria[1]})") # jeęli jest galeria to wstawia do pola
+                coords = get_coordinates(galeria[1]) # wywolanie coords z argumentem galeria - lokalizacja
+                if coords: #jesli istnieje przesuwanie stareg znacznika dodawanie nowego
+                    map_widget.set_position(coords[0], coords[1]) #Ustawia środek mapy w punkcie
+                    map_widget.set_zoom(12)
+                    delete_marker_by_name(galeria[0])
+                    marker = map_widget.set_marker(coords[0], coords[1], text=galeria[0]) #nowy znacznik
+                    markers.append([galeria[0], marker])
+                for dzielo in dane_dziela:
+                    if dzielo[2] == galeria[0]:
+                        dane_text.insert(END, f" - Dzieło: {dzielo[0]} (autor: {dzielo[1]})\n")
+                for pracownik in dane_pracownicy:
+                    if pracownik[2] == galeria[0]:
+                        dane_text.insert(END, f" - Pracownik: {pracownik[0]} {pracownik[1]}\n")
+                dane_text.insert(END, "\n")
+                znaleziono = True
+        for wystawa in dane_wystawy:
+            if wystawa[0].strip().lower() == query.lower():
+                dane_text.insert(END, f"Wystawa artystyczna: {wystawa[0]} ({wystawa[1]})\n")
+                coords = get_coordinates(wystawa[1])
+                if coords:
+                    map_widget.set_position(coords[0], coords[1])
+                    map_widget.set_zoom(12)
+                    delete_marker_by_name(wystawa[0])
+                    marker = map_widget.set_marker(coords[0], coords[1], text=wystawa[0])
+                    markers.append([wystawa[0], marker])
+                for dzielo in dane_dziela:
+                    if dzielo[2] == wystawa[0]:
+                        dane_text.insert(END, f" - Dzieło: {dzielo[0]} (autor: {dzielo[1]})\n")
+                for pracownik in dane_pracownicy:
+                    if pracownik[2] == wystawa[0]:
+                        dane_text.insert(END, f" - Pracownik: {pracownik[0]} {pracownik[1]}\n")
+                dane_text.insert(END, "\n")
+                znaleziono = True
+        if not znaleziono:
+            dane_text.insert(END, "Nie znaleziono Galerii Sztuki ani Wystawy.\n")
+
+    Button(ramka_wyswietlanie, text="Szukaj", command=search_data).pack(pady=5)
+
+    Button(ramka_przyciski, text="Galerie sztuki", bg="#8280FF", command=open_galerie_window).pack(pady=5, fill=X)
+    Button(ramka_przyciski, text="Wystawy",bg="#8280FF", command=open_wystawy_window).pack(pady=5, fill=X)
+    Button(ramka_przyciski, text="Dzieła",bg="#8280FF" ,command=open_dziela_window).pack(pady=5, fill=X)
+    Button(ramka_przyciski, text="Pracownicy",bg="#8280FF", command=open_pracownicy_window).pack(pady=5, fill=X)
 
     root.mainloop()
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    start_app()
+
+
+
